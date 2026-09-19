@@ -83,18 +83,27 @@ async def generate_jwt_token(uid, password):
     """Generate JWT token"""
     try:
         encoded_password = urllib.parse.quote(password)
-        url = f"https://ff-jwt-gen-api.lovable.app/api/public/token?uid={uid}&password={encoded_password}"
+        url = f"http://38.29.171.32:2020/token?uid={uid}&password={encoded_password}"
         
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=24) as response:
+            async with session.get(url, timeout=24, ssl=False) as response:
                 if response.status == 200:
-                    data = await response.json()
+                    try:
+                        data = await response.json()
+                    except Exception:
+                        text = (await response.text()).strip()
+                        if text and len(text) > 50:
+                            return text
+                        return None
                     
                     if isinstance(data, dict):
-                        if 'jwt_token' in data:
-                            return data['jwt_token']
-                        elif 'token' in data:
-                            return data['token']
+                        token = data.get('token') or data.get('jwt') or data.get('access_token')
+                        if not token and isinstance(data.get('data'), dict):
+                            token = data['data'].get('token') or data['data'].get('jwt')
+                        if token:
+                            return token
+                    elif isinstance(data, str):
+                        return data
                 return None
     except:
         return None
@@ -133,7 +142,7 @@ async def send_like(encrypted_uid, token, url):
             'Authorization': f"Bearer {token}",
             'Content-Type': "application/x-www-form-urlencoded",
             'X-GA': "v1 1",
-            'ReleaseVersion': "OB54"
+            'ReleaseVersion': "OB55"
         }
         
         async with aiohttp.ClientSession() as session:
@@ -238,7 +247,7 @@ def get_player_info(encrypted_uid, server_name, token):
     elif server_name in {"BR", "US", "SAC", "NA"}:
         url = "https://client.us.freefiremobile.com/GetPlayerPersonalShow"
     else:
-        url = "https://clientbp.ggpolarbear.com/GetPlayerPersonalShow"
+        url = "https://clientbp.ppmainecoonghj.com/GetPlayerPersonalShow"
 
     edata = bytes.fromhex(encrypted_uid)
     headers = {
@@ -246,7 +255,7 @@ def get_player_info(encrypted_uid, server_name, token):
         'Authorization': f"Bearer {token}",
         'Content-Type': "application/x-www-form-urlencoded",
         'X-GA': "v1 1",
-        'ReleaseVersion': "OB54"
+        'ReleaseVersion': "OB55"
     }
 
     try:
@@ -323,7 +332,7 @@ def handle_requests():
     elif server_name in {"BR", "US", "SAC", "NA"}:
         like_url = "https://client.us.freefiremobile.com/LikeProfile"
     else:
-        like_url = "https://clientbp.ggpolarbear.com/LikeProfile"
+        like_url = "https://clientbp.ppmainecoonghj.com/LikeProfile"
 
     # Send likes with smart checking
     result = asyncio.run(send_all_likes(uid, server_name, like_url))
